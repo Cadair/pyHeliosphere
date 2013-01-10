@@ -14,6 +14,7 @@ try:
 except:
     raise ImportError("Could not import io module, this needs python 2.6+")
 from numpy import array, reshape, floor
+import numpy as np
 
 class Error(Exception):
     """Base error Class"""
@@ -46,11 +47,14 @@ class Volume():
         File.seek(volume_start)
         
         #Read in Volume
-        self.volume = bytearray(volume_end - volume_start)
+#        self.volume = bytearray(volume_end - volume_start)
+#
+#        File.readinto(self.volume)
+#        self.volume = array(self.volume)
+#        self.volume = reshape(self.volume,(volume_dimensions))
 
-        File.readinto(self.volume)
-        self.volume = array(self.volume)
-        self.volume = reshape(self.volume,(volume_dimensions))
+        self.volume = np.fromfile()
+
         
         if File.tell() != volume_end:
             raise ReadError("Error Reading in Volume %i, Read Wrong Number of Bytes"%voxel)
