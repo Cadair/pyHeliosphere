@@ -134,10 +134,10 @@ class voxread():
             print "Voxel,", "Voxel Dimensions,", "Header,","File Location"
             for i,V in enumerate(self.volumes):
                 print i,",",V.size,",%s Lines,"%len(V.header),self.struct["VDR%i"%i]
-            return "Pretty Table"
+            return
         
-        inf = PrettyTable() #TODO: This will fail if import fails
-        inf.set_field_names(["Volume", "Volume Dimensions", "Header","File Location"])
+        inf = PrettyTable()
+        inf.field_names = ["Volume", "Volume Dimensions", "Header","File Location"]
         for i,V in enumerate(self.volumes):
             inf.add_row([i,V.size,"%s Lines"%len(V.header),self.struct["VDR%i"%i]])
         return inf.printt()

@@ -11,9 +11,11 @@ den_file = "/home/stuart/GitHub/pyHeliosphere/Test Data/2008_06_06_03-STELab_IPS
 vel_file = "/home/stuart/GitHub/pyHeliosphere/Test Data/2008_06_06_03-STELab_IPS_CR2070_v.vox"
 
 density_vox = voxread.voxread(den_file)
+density_vox.info()
 density = density_vox.volumes[0].volume
 
 velocity_vox = voxread.voxread(vel_file)
+velocity_vox.info()
 velocity = velocity_vox.volumes[0].volume
 #Extract the Earth Coordinates for plotting
 hdr = density_vox.volumes[0].header[8]
