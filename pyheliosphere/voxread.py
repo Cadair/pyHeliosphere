@@ -9,13 +9,8 @@ UCSD heliospheric VOX files. The file manual for VOX files can be found at:
 http://www.terarecon.com/downloads/support/vp500_vol_file_format.pdf
 """
 #import Modules, this uses the io stream module from python 2.6 (readinto)
-try:
-    import io
-except:
-    raise ImportError("Could not import io module, this needs python 2.6+")
-from numpy import array, reshape, floor
 import numpy as np
-
+#from memory_profiler import profile
 class Error(Exception):
     """Base error Class"""
     pass
@@ -33,8 +28,8 @@ class ReadError(VOXError):
 
 class Volume():
     """This is a simple class that holds a voxel and its header """
-    
-    def __init__(self,File,struct,voxel,volume_dimensions,VDR):
+#    @profile
+    def __init__(self, File, struct, voxel, volume_dimensions, VDR, memmap=True):
         """This Class is initilised by passing a file object, vox struct dict,
         the voxel number to read and the voxel header"""
         self.size = volume_dimensions
@@ -47,21 +42,46 @@ class Volume():
         File.seek(volume_start)
         
         #Read in Volume
-#        self.volume = bytearray(volume_end - volume_start)
-#
-#        File.readinto(self.volume)
-#        self.volume = array(self.volume)
-#        self.volume = reshape(self.volume,(volume_dimensions))
-
-        self.volume = np.fromfile()
-
+        if memmap:
+            self.volume = np.memmap(File, dtype=np.uint8, mode='r',
+                                offset=volume_start)
+        else:
+            self.volume = np.fromfile(File, dtype=np.uint8,
+                                      count=volume_end - volume_start)
+        
+        
+        self.volume = self.volume.reshape(volume_dimensions)
         
         if File.tell() != volume_end:
             raise ReadError("Error Reading in Volume %i, Read Wrong Number of Bytes"%voxel)
-        
+
     def __str__(self):
         return "A %s Volume"%(self.size.__str__())
+    
+    def string_extract(self, line, stripper):
+        """Extracts the varibles from a line, with name stripper"""
+        return line.strip(stripper)
         
+    def list_extract(self, headerlist, var_name):
+        """This extracts a varible from a header list (either HDR or VDR)
+        Returns the stripped list or -1 if not found """
+        #print headerlist
+        for line in headerlist:
+            if line.find(var_name) != -1:
+                return self.string_extract(line, var_name)
+        return -1
+        
+#    @profile
+    def calibrate(self):
+        """ Converts the byte arrays into physical units"""
+        nmin = float(self.list_extract(self.header, "min"))
+        nmax = float(self.list_extract(self.header, "max"))
+        
+        self.volume = np.array(self.volume, dtype=np.float64,order='F')
+        self.volume /= np.max(self.volume)
+        self.volume += nmin
+        self.volume *= nmax
+    
 
 class voxread():
     """This is a standard vox read class, it will read in the Header of the file
@@ -92,11 +112,12 @@ class voxread():
     #Standard Header strings
     voxHDR = 'Vox1999a\n'
     
-    def __init__(self,filename):
+    def __init__(self, filename, memmap=True):
         """File open and header read function"""
         self.filename = filename
+        self.memmap = memmap
         #Open file
-        self.vox = io.FileIO(filename)
+        self.vox = open(filename, 'rb')
         #Check that it is a vox file, based on the first line of file
         #Create header list
         self.header = []
@@ -109,13 +130,11 @@ class voxread():
             + " it does not have '%s' as its first line"%self.voxHDR)
         
         #Read rest of first header section
-        hdr = True
-        while hdr:
+        line = False
+        while line != '##\x0c\n':
+            line = self.vox.readline()
             #Read next line
-            self.header.append(self.vox.readline())
-            #Find line feed chr and stop loop
-            if self.header[-1].find('##\x0c\n') != -1:
-                hdr = False
+            self.header.append(line.strip('\n').strip('/'))
         
         #There may be a line in the header specificing the number of volumes
         #the file holds, if it there find it and extract it.
@@ -180,21 +199,22 @@ class voxread():
                 VolumeLength *= each
                 
             #Calculate Volume Length based on the formula in the specifications
-            VolumeLength = int(floor((VolumeLength*VoxelSize + 7)/8.0))
+            VolumeLength = int(np.floor((VolumeLength*VoxelSize + 7)/8.0))
             self.struct["Volume%i"%i] = VolumeLength + self.vox.tell()
             
-            self.volumes.append(Volume(self.vox,self.struct,i,VolumeDimensions,vdr))
+            self.volumes.append(Volume(self.vox, self.struct, i,
+                                       VolumeDimensions, vdr, 
+                                       memmap=self.memmap))
             
     def VDR_read(self):
         """Reads the Volume Header, needs file in the right place"""
         VDRlines = []
-        vdr = True
-        while vdr:
+        line = False
+        while line != '##\x0c\n':
+            line = self.vox.readline()
             #Read next line
-            VDRlines.append(self.vox.readline())
-            #Find line feed chr and stop loop
-            if VDRlines[-1].find('##\x0c\n') != -1:
-                vdr = False
+            VDRlines.append(line.strip('\n').strip('/'))
+
         return VDRlines
                 
         
