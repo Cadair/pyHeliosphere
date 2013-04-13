@@ -216,9 +216,3 @@ class voxread():
             VDRlines.append(line.strip('\n').strip('/'))
 
         return VDRlines
-                
-        
-if __name__ == "__main__":
-    x = voxread("2008_06_06_03-STELab_IPS_CR2070_n.vox")
-    print x.info()
-    print x.volumes[0].header
